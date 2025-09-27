@@ -1,0 +1,9 @@
+//
+//  Release.xcconfig
+//  Noto
+//
+//  Created by Wataru Ishihara on 9/24/25.
+//
+
+#include "Config/Secrets.xcconfig"
+INFOPLIST_EXPAND_BUILD_SETTINGS = YES

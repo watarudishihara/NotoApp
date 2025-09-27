@@ -1,0 +1,69 @@
+//
+//  PreviewShell.html
+//  Noto
+//
+//  Created by Wataru Ishihara on 9/26/25.
+//
+
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- KaTeX from bundle. Base URL will be Bundle.main.bundleURL -->
+  <link rel="stylesheet" href="katex/katex.min.css" />
+  <script defer src="katex/katex.min.js"></script>
+  <script defer src="katex/contrib/auto-render.min.js"></script>
+
+  <style>
+    /* Match native iOS typography */
+    html, body { margin:0; padding:0; }
+    body { font: 16px -apple-system, BlinkMacSystemFont, "SF Pro Text",
+           system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    #content { padding: 12px; white-space: pre-wrap; }
+  </style>
+
+  <script>
+    // One global API the app calls.
+    window.Noto = {
+      setHTML: function (s) {
+        const el = document.getElementById('content');
+        el.innerHTML = s; // NOT textContent
+
+        (function renderWhenReady(){
+          if (typeof window.renderMathInElement === 'function') {
+            renderMathInElement(el, {
+              delimiters: [
+                {left: "$$", right: "$$", display: true},
+                {left: "$",  right: "$",  display: false},
+                {left: "\\(", right: "\\)", display: false},
+                {left: "\\[", right: "\\]", display: true}
+              ],
+              throwOnError: false
+            });
+          } else {
+            setTimeout(renderWhenReady, 0);
+          }
+        })();
+      },
+      status: function () {
+        return {
+          katex: typeof window.katex,
+          autorender: typeof window.renderMathInElement
+        };
+      }
+    };
+
+    // Initial autorender for whatever is already inside #content (used by export)
+    document.addEventListener('DOMContentLoaded', function(){
+      if (typeof window.renderMathInElement === 'function') {
+        window.Noto.setHTML(document.getElementById('content').innerHTML);
+      }
+    });
+  </script>
+</head>
+<body>
+  <div id="content"><!--CONTENT--></div>
+</body>
+</html>

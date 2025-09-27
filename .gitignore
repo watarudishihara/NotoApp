@@ -1,0 +1,12 @@
+DerivedData/
+build/
+.build/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+*.xcuserdatad/
+*.xcodeproj/project.xcworkspace/
+*.xcodeproj/xcuserdata/
+Pods/
+*.DS_Store
+Config/*.xcconfig
