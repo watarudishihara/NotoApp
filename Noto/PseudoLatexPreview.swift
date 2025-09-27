@@ -18,12 +18,8 @@ struct PseudoLatexPreview: UIViewRepresentable {
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             ready = true
             if let html = pending {
-                LatexService.setHTML(html, on: webView)   // <-- use the actual pending text
+                LatexService.setHTML(html, on: webView)
                 pending = nil
-            }
-            // Optional: sanity log
-            webView.evaluateJavaScript("window.Noto && window.Noto.status()") { status, _ in
-                print("KaTeX status:", status ?? "nil")
             }
         }
     }
@@ -35,8 +31,7 @@ struct PseudoLatexPreview: UIViewRepresentable {
         LatexService.loadShell(into: wv)
 
         // ⚠️ Don't push HTML before the shell finishes loading.
-        // If you want a smoke test, queue it:
-        context.coordinator.pending = "<b>HTML ok?</b> $x^2$ and $$\\frac{1}{x}$$"
+        // Content will be set via updateUIView when ready
 
         return wv
     }

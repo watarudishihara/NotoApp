@@ -65,20 +65,12 @@
 				Config/Debug.xcconfig,
 				Config/Release.xcconfig,
 				Info.plist,
-				PreviewShell.html,
 			);
 			target = FAA762312E66CAE700BF88FD /* Noto */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
-		FA4ED1DA2E871C2100B46FF2 /* Exceptions for "Noto" folder in "Copy Bundle Resources" phase from "Noto" target */ = {
-			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
-			buildPhase = FAA762302E66CAE700BF88FD /* Resources */;
-			membershipExceptions = (
-				PreviewShell.html,
-			);
-		};
 		FA77460C2E8448BC00405560 /* Exceptions for "Noto" folder in "Compile Sources" phase from "Noto" target */ = {
 			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
 			buildPhase = FAA7622E2E66CAE700BF88FD /* Sources */;
@@ -95,7 +87,6 @@
 			exceptions = (
 				FADB71692E75D4500090325C /* Exceptions for "Noto" folder in "Noto" target */,
 				FA77460C2E8448BC00405560 /* Exceptions for "Noto" folder in "Compile Sources" phase from "Noto" target */,
-				FA4ED1DA2E871C2100B46FF2 /* Exceptions for "Noto" folder in "Copy Bundle Resources" phase from "Noto" target */,
 			);
 			path = Noto;
 			sourceTree = "<group>";

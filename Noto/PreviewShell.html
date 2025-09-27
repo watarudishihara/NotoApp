@@ -1,27 +1,61 @@
-//
-//  PreviewShell.html
-//  Noto
-//
-//  Created by Wataru Ishihara on 9/26/25.
-//
-
 <!doctype html>
 <html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- KaTeX from bundle. Base URL will be Bundle.main.bundleURL -->
-  <link rel="stylesheet" href="katex/katex.min.css" />
-  <script defer src="katex/katex.min.js"></script>
-  <script defer src="katex/contrib/auto-render.min.js"></script>
+  <!-- KaTeX from CDN (temporary fix) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" />
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
 
   <style>
-    /* Match native iOS typography */
+    /* LaTeX-style typography */
     html, body { margin:0; padding:0; }
-    body { font: 16px -apple-system, BlinkMacSystemFont, "SF Pro Text",
-           system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-    #content { padding: 12px; white-space: pre-wrap; }
+    body { 
+      font: 16px "Times New Roman", "Computer Modern", "Latin Modern", 
+            "Liberation Serif", "DejaVu Serif", "Times", serif;
+      line-height: 1.4;
+      color: #333;
+    }
+    #content { 
+      padding: 16px; 
+      white-space: pre-wrap;
+      max-width: none;
+    }
+    
+    /* LaTeX-style headings */
+    h1, h2, h3, h4, h5, h6 {
+      font-family: "Times New Roman", "Computer Modern", "Latin Modern", 
+                   "Liberation Serif", "DejaVu Serif", "Times", serif;
+      font-weight: bold;
+      margin: 1em 0 0.5em 0;
+    }
+    
+    h1 { font-size: 1.5em; }
+    h2 { font-size: 1.3em; }
+    h3 { font-size: 1.1em; }
+    
+    /* Paragraphs */
+    p {
+      margin: 0.5em 0;
+      text-align: justify;
+    }
+    
+    /* Code styling */
+    code {
+      font-family: "Courier New", "Computer Modern Typewriter", 
+                   "Liberation Mono", "DejaVu Sans Mono", monospace;
+      background: #f5f5f5;
+      padding: 2px 4px;
+      border-radius: 3px;
+    }
+    
+    /* Math display */
+    .display-math {
+      text-align: center;
+      margin: 1em 0;
+    }
   </style>
 
   <script>
@@ -52,7 +86,7 @@
           katex: typeof window.katex,
           autorender: typeof window.renderMathInElement
         };
-      }
+      },
     };
 
     // Initial autorender for whatever is already inside #content (used by export)

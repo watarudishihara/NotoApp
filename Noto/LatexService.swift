@@ -21,11 +21,11 @@ enum LatexService {
     }
 
     static func setHTML(_ s: String, on webView: WKWebView) {
-        // Escape the string for JS
+        // Escape the string for JS, but preserve $ for math rendering
         let escaped = s
             .replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "`", with: "\\`")
-            .replacingOccurrences(of: "$", with: "\\$")
+            // Don't escape $ - KaTeX needs them for math delimiters
             .replacingOccurrences(of: "\n", with: "\\n")
             .replacingOccurrences(of: "\r", with: "")
         let js = "window.Noto && window.Noto.setHTML(`\(escaped)`);"

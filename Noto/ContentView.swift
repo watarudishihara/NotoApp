@@ -405,7 +405,13 @@ struct ContentView: View {
             .onChange(of: latexText) { _, _ in if didLoad { save() } }
             .onChange(of: panelMode) { _, newMode in
                 if newMode == .preview {
-                    previewLatex = cleanForKaTeX(latexText)
+                    previewLatex = MiniTeX.render(cleanForKaTeX(latexText))
+                }
+            }
+            .onAppear {
+                // Ensure preview is updated when view appears
+                if panelMode == .preview {
+                    previewLatex = MiniTeX.render(cleanForKaTeX(latexText))
                 }
             }
             .onChange(of: pickedImage) { _, _ in if didLoad { save(updateCover: true) } }
@@ -718,7 +724,7 @@ struct ContentView: View {
                                 .foregroundStyle(.secondary)
 
                             Button {
-                                previewLatex = cleanForKaTeX(latexText)
+                                previewLatex = MiniTeX.render(cleanForKaTeX(latexText))
                             } label: {
                                 Label("Render LaTeX", systemImage: "eye")
                             }
@@ -789,7 +795,7 @@ struct ContentView: View {
             await MainActor.run {
                 latexText = latex
                 if panelMode == .preview {
-                    previewLatex = cleanForKaTeX(latex)
+                    previewLatex = MiniTeX.render(cleanForKaTeX(latex))
                 }
             }
         } catch {
@@ -840,7 +846,7 @@ struct ContentView: View {
         return nil
     }
     private func buildExportHTML() -> String {
-        let body = previewLatex.isEmpty ? cleanForKaTeX(latexText) : previewLatex
+        let body = previewLatex.isEmpty ? MiniTeX.render(cleanForKaTeX(latexText)) : previewLatex
         guard let url = Bundle.main.url(forResource: "PreviewShell", withExtension: "html"),
               var html = try? String(contentsOf: url) else {
             return body // as a last resort
@@ -1874,7 +1880,7 @@ private func cleanForKaTeX(_ raw: String) -> String {
     // 0) Normalize common “mistyped backslashes” before LaTeX commands.
     //    Converts /int, ／sqrt, ¥frac, etc.  →  \int, \sqrt, \frac …
     //    The negative lookbehind (?<![/∕／⁄¥￥]) keeps `//int` from turning into `/\int`.
-    let cmds = #"(int|sum|prod|lim|sqrt|frac|sin|cos|tan|log|ln|cdot|times|to|le|ge|ne|neq|infty|alpha|beta|gamma|pi|partial|nabla|pm|mp|cup|cap|subset|supset|approx|sim|equiv|forall|exists|left|right|rightarrow|Rightarrow|ldots|dots|vec|hat|bar|overline|underline|mathbb|mathcal|mathrm|mathbf)"#
+    let cmds = #"(int|sum|prod|lim|sqrt|frac|sin|cos|tan|log|ln|cdot|times|to|le|ge|ne|neq|infty|alpha|beta|gamma|pi|partial|nabla|pm|mp|cup|cap|subset|supset|approx|sim|equiv|forall|exists|left|right|rightarrow|Rightarrow|ldots|dots|vec|hat|bar|overline|underline|mathbb|mathcal|mathrm|mathbf|text)"#
     s = s.replacingOccurrences(
         of: #"(?<![/∕／⁄¥￥])[/∕／⁄¥￥]\s*\#(cmds)"#,
         with: #"\\$1"#,
