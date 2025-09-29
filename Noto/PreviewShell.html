@@ -4,24 +4,41 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- KaTeX from CDN (temporary fix) -->
+  <!-- KaTeX from CDN (more reliable) -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" />
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
 
   <style>
-    /* LaTeX-style typography */
-    html, body { margin:0; padding:0; }
-    body { 
-      font: 16px "Times New Roman", "Computer Modern", "Latin Modern", 
-            "Liberation Serif", "DejaVu Serif", "Times", serif;
-      line-height: 1.4;
-      color: #333;
+    /* Simple, stable document styling */
+    html, body { 
+      margin: 0; 
+      padding: 0; 
+      background: #f5f5f5;
     }
+    
+    body { 
+      font: 12pt "Times New Roman", serif;
+      line-height: 1.6;
+      color: #333;
+      padding: 0;
+      margin: 0;
+      box-sizing: border-box;
+    }
+    
     #content { 
-      padding: 16px; 
+      background: white;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      width: 612px;  /* Fixed 8.5in at 72 DPI - NEVER CHANGES */
+      margin: 20px auto;
+      padding: 72px;  /* Fixed 1 inch margins */
       white-space: pre-wrap;
-      max-width: none;
+      box-sizing: border-box;
+      /* Allow multiple pages */
+      min-height: 792px; /* Minimum 11in height */
+      height: auto; /* Grow as needed */
+      /* Completely stable - no transforms */
+      position: relative;
     }
     
     /* LaTeX-style headings */
@@ -29,12 +46,29 @@
       font-family: "Times New Roman", "Computer Modern", "Latin Modern", 
                    "Liberation Serif", "DejaVu Serif", "Times", serif;
       font-weight: bold;
-      margin: 1em 0 0.5em 0;
+      margin: 1.5em 0 0.8em 0;
+      color: #1a1a1a;
     }
     
-    h1 { font-size: 1.5em; }
-    h2 { font-size: 1.3em; }
-    h3 { font-size: 1.1em; }
+    h1 { 
+      font-size: 2.2em; 
+      font-weight: 900;
+      margin-top: 0.5em;
+      margin-bottom: 1em;
+      text-align: center;
+    }
+    h2 { 
+      font-size: 1.8em; 
+      font-weight: bold;
+      margin-top: 1.2em;
+      margin-bottom: 0.6em;
+    }
+    h3 { 
+      font-size: 1.4em; 
+      font-weight: bold;
+      margin-top: 1em;
+      margin-bottom: 0.5em;
+    }
     
     /* Paragraphs */
     p {
@@ -56,6 +90,58 @@
       text-align: center;
       margin: 1em 0;
     }
+    
+    /* LaTeX-specific styling */
+    .section {
+      font-size: 1.8em;
+      font-weight: bold;
+      margin: 1.5em 0 0.8em 0;
+      color: #1a1a1a;
+      border-bottom: 2px solid #333;
+      padding-bottom: 0.3em;
+    }
+    
+    .subsection {
+      font-size: 1.4em;
+      font-weight: bold;
+      margin: 1.2em 0 0.6em 0;
+      color: #2a2a2a;
+    }
+    
+    .subsubsection {
+      font-size: 1.2em;
+      font-weight: bold;
+      margin: 1em 0 0.5em 0;
+      color: #3a3a3a;
+    }
+    
+    /* Bold text */
+    strong, b {
+      font-weight: bold;
+      color: #1a1a1a;
+    }
+    
+    /* Italic text */
+    em, i {
+      font-style: italic;
+    }
+    
+    /* Title styling */
+    .title {
+      font-size: 2.5em;
+      font-weight: 900;
+      text-align: center;
+      margin: 0.5em 0 1.5em 0;
+      color: #000;
+    }
+    
+    /* Author and date */
+    .author, .date {
+      text-align: center;
+      font-style: italic;
+      margin: 0.3em 0;
+      color: #666;
+    }
   </style>
 
   <script>
@@ -63,10 +149,13 @@
     window.Noto = {
       setHTML: function (s) {
         const el = document.getElementById('content');
+        console.log('Setting HTML:', s);
         el.innerHTML = s; // NOT textContent
 
         (function renderWhenReady(){
+          console.log('KaTeX status:', typeof window.katex, typeof window.renderMathInElement);
           if (typeof window.renderMathInElement === 'function') {
+            console.log('Rendering math in element...');
             renderMathInElement(el, {
               delimiters: [
                 {left: "$$", right: "$$", display: true},
@@ -76,8 +165,10 @@
               ],
               throwOnError: false
             });
+            console.log('Math rendering completed');
           } else {
-            setTimeout(renderWhenReady, 0);
+            console.log('KaTeX not ready, retrying...');
+            setTimeout(renderWhenReady, 100);
           }
         })();
       },
@@ -87,12 +178,35 @@
           autorender: typeof window.renderMathInElement
         };
       },
+      testKatex: function() {
+        console.log('Testing KaTeX manually...');
+        const el = document.getElementById('content');
+        el.innerHTML = 'Test: $x^2$ and $$\\frac{1}{2}$$';
+        if (typeof window.renderMathInElement === 'function') {
+          renderMathInElement(el, {
+            delimiters: [
+              {left: "$$", right: "$$", display: true},
+              {left: "$",  right: "$",  display: false}
+            ],
+            throwOnError: false
+          });
+          console.log('Manual test completed');
+        } else {
+          console.log('KaTeX not available for manual test');
+        }
+      },
     };
 
     // Initial autorender for whatever is already inside #content (used by export)
     document.addEventListener('DOMContentLoaded', function(){
+      console.log('DOM loaded, checking KaTeX...');
+      console.log('KaTeX available:', typeof window.katex);
+      console.log('Auto-render available:', typeof window.renderMathInElement);
+      
       if (typeof window.renderMathInElement === 'function') {
         window.Noto.setHTML(document.getElementById('content').innerHTML);
+      } else {
+        console.log('KaTeX not ready on DOM load');
       }
     });
   </script>

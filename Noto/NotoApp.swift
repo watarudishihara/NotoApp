@@ -14,6 +14,10 @@ struct NotoApp: App {
         WindowGroup {
             FoldersView()                 // start at folders list
                 .environmentObject(store) // inject the store once
+                .onAppear {
+                    // Ensure store is properly initialized
+                    print("NotoApp: Store initialized with \(store.folders.count) folders")
+                }
         }
     }
 }

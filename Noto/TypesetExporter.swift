@@ -38,14 +38,20 @@ final class TypesetExporter: NSObject, WKNavigationDelegate {
 
     private func makePDF() {
         let cfg = WKPDFConfiguration()
-
+        
+        // Set proper PDF configuration for document-like output
+        cfg.rect = CGRect(x: 0, y: 0, width: 612, height: 792) // 8.5" x 11" at 72 DPI
+        
         // Use the Result<Data, Error> completion form (works iOS 14+)
         web.createPDF(configuration: cfg) { [weak self] result in
             guard let self = self else { return }
             switch result {
             case .success(let data):
+                let formatter = DateFormatter()
+                formatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
+                let timestamp = formatter.string(from: Date())
                 let url = FileManager.default.temporaryDirectory
-                    .appendingPathComponent("Noto-\(UUID().uuidString).pdf")
+                    .appendingPathComponent("Noto-Document-\(timestamp).pdf")
                 do {
                     try data.write(to: url)
                     self.onFinish?(.success(url))

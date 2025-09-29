@@ -10,59 +10,7 @@ struct Notebook: Identifiable, Hashable {
     var created: Date
 }
 
-struct HomeView: View {
-    @EnvironmentObject var store: NotebookStore
-    @ToolbarContentBuilder
-    private var homeToolbar: some ToolbarContent {
-        ToolbarItem(placement: {
-            if #available(iOS 17.0, *) { return .topBarTrailing } else { return .navigationBarTrailing }
-        }()) {
-            Button {
-                guard let id = store.folders.first?.id else { return }
-                _ = store.createNotebook(in: id, title: "New Notebook")
-            } label: {
-                Label("Add", systemImage: "plus")
-            }
-            .disabled(store.folders.isEmpty)
-        }
-    }
-
-    var body: some View {
-        NavigationStack {
-            if let folder = store.folders.first {
-                List {
-                    ForEach(folder.notebooks) { nb in          // <- use `folder`, not `current`
-                        NavigationLink {
-                            ContentView(folderID: folder.id, notebookID: nb.id)
-                                .navigationTitle(nb.title)
-                        } label: {
-                            NotebookCard(
-                                title: nb.title,
-                                updated: nb.updated,
-                                cover: store.coverImage(folderID: folder.id, notebookID: nb.id)
-                            )
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    .onDelete { idx in
-                        let ids = idx.map { folder.notebooks[$0].id }
-                        ids.forEach { store.deleteNotebook(folderID: folder.id, notebookID: $0) }
-                    }
-                }
-                .navigationTitle("Noto Notebooks")
-            } else {
-                // First run: create a default folder
-                VStack {
-                    Text("No folders yet")
-                    Button("Create ‘My Notes’") { store.createFolder(name: "My Notes") }
-                        .buttonStyle(.borderedProminent)
-                }
-            }
-        }
-        .toolbar { homeToolbar }
-        
-    }
-}
+// Removed unused HomeView - using FoldersView instead
 //struct NotebookTile: View {
 //    let title: String
 //    let updated: Date
@@ -229,8 +177,8 @@ struct ContentView: View {
     @State private var panelWidth: CGFloat = 360
     
     //Exporting
-    @State private var showExportMenu = false
     @State private var typesetExporter = TypesetExporter() // keep a strong ref
+    @State private var isExporting = false
     
     //saving
     @State private var didLoad = false
@@ -309,9 +257,10 @@ struct ContentView: View {
                 .frame(width: 340)
             }
 
-            // Export .tex
-            Button {
-                showExportMenu = true
+            // Export menu
+            Menu {
+                Button("PDF Document") { exportTypesetPDF() }
+                Button("LaTeX Source (.tex)") { exportTeX() }
             } label: {
                 Label("Export", systemImage: "square.and.arrow.up")
             }
@@ -343,6 +292,8 @@ struct ContentView: View {
             pickedImage = payload.pickedImage
             textBoxes = payload.textBoxes
             didLoad = true
+            // Initialize preview after loading data
+            previewLatex = MiniTeX.render(cleanForKaTeX(latexText))
         }
     }
 
@@ -392,6 +343,24 @@ struct ContentView: View {
             .sheet(isPresented: $showShare) {
                 if let url = shareURL { ShareSheet(items: [url]) }
             }
+            .overlay {
+                if isExporting {
+                    ZStack {
+                        Color.black.opacity(0.3)
+                            .ignoresSafeArea()
+                        VStack(spacing: 16) {
+                            ProgressView()
+                                .scaleEffect(1.2)
+                            Text("Creating PDF...")
+                                .font(.headline)
+                                .foregroundColor(.white)
+                        }
+                        .padding(24)
+                        .background(Color.black.opacity(0.8))
+                        .cornerRadius(12)
+                    }
+                }
+            }
             .alert("Error",
                    isPresented: Binding(get: { errorMessage != nil },
                                         set: { _ in errorMessage = nil })) {
@@ -409,10 +378,8 @@ struct ContentView: View {
                 }
             }
             .onAppear {
-                // Ensure preview is updated when view appears
-                if panelMode == .preview {
-                    previewLatex = MiniTeX.render(cleanForKaTeX(latexText))
-                }
+                // Always initialize preview when view appears
+                previewLatex = MiniTeX.render(cleanForKaTeX(latexText))
             }
             .onChange(of: pickedImage) { _, _ in if didLoad { save(updateCover: true) } }
             .onChange(of: textBoxes) { _, newVal in
@@ -424,11 +391,6 @@ struct ContentView: View {
                 }
             }
         //exporting
-            .confirmationDialog("Export", isPresented: $showExportMenu, titleVisibility: .visible) {
-                Button("Typeset PDF (HTML + KaTeX)") { exportTypesetPDF() }
-                Button("LaTeX (.tex)") { exportTeX() }
-                Button("Cancel", role: .cancel) { }
-            }
         
             .toolbar { contentToolbar }
     }// explicit ToolbarContent below
@@ -734,7 +696,6 @@ struct ContentView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else {
                         PseudoLatexPreview(text: previewLatex)
-                            .id(previewLatex.hashValue) // refresh only when content actually changes
                             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
                     }
                 }
@@ -846,7 +807,8 @@ struct ContentView: View {
         return nil
     }
     private func buildExportHTML() -> String {
-        let body = previewLatex.isEmpty ? MiniTeX.render(cleanForKaTeX(latexText)) : previewLatex
+        // Always generate fresh content for export to ensure it's up-to-date
+        let body = MiniTeX.render(cleanForKaTeX(latexText))
         guard let url = Bundle.main.url(forResource: "PreviewShell", withExtension: "html"),
               var html = try? String(contentsOf: url) else {
             return body // as a last resort
@@ -857,14 +819,24 @@ struct ContentView: View {
 
     // Kick off the PDF export via WKWebView.createPDF
     private func exportTypesetPDF() {
-        let html = buildExportHTML()
-        typesetExporter.exportPDF(html: html, baseURL: katexBaseURL) { result in
-            switch result {
-            case .success(let url):
-                shareURL = url
-                showShare = true
-            case .failure(let err):
-                errorMessage = err.localizedDescription
+        isExporting = true
+        // Add a small delay to ensure KaTeX is ready
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            let html = self.buildExportHTML()
+            // Don't pass baseURL since we're using CDN - let it load from internet
+            self.typesetExporter.exportPDF(html: html, baseURL: nil) { result in
+                switch result {
+                case .success(let url):
+                    // Add a longer delay to ensure the PDF file is fully written and accessible
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        self.isExporting = false
+                        self.shareURL = url
+                        self.showShare = true
+                    }
+                case .failure(let err):
+                    self.isExporting = false
+                    self.errorMessage = err.localizedDescription
+                }
             }
         }
     }
@@ -1887,7 +1859,24 @@ private func cleanForKaTeX(_ raw: String) -> String {
         options: .regularExpression
     )
 
-    // 1) (your existing cleanups)
+    // 1) Remove markdown code fences that Gemini sometimes adds
+    s = s.replacingOccurrences(of: #"(?m)^\s*\\usepackage(?:\[[^\]]*\])?\{[^}]*\}\s*$"#,
+                               with: "",
+                               options: .regularExpression)
+    s = s.replacingOccurrences(of: #"(?m)^\s*\\begin\{document\}\s*$"#,
+                               with: "",
+                               options: .regularExpression)
+    s = s.replacingOccurrences(of: #"(?m)^\s*\\end\{document\}\s*$"#,
+                               with: "",
+                               options: .regularExpression)
+
+    // UNESCAPE double-escaped KaTeX delimiters (\\( -> \(, etc.)
+    s = s.replacingOccurrences(of: #"\\\("#, with: #"\("#)
+    s = s.replacingOccurrences(of: #"\\\)"#, with: #"\)"#)
+    s = s.replacingOccurrences(of: #"\\\["#, with: #"\["#)
+    s = s.replacingOccurrences(of: #"\\\]"#, with: #"\]"#)
+    
+    // 2) (your existing cleanups)
     s = s.replacingOccurrences(of: "\\\\documentclass\\{.*?\\}", with: "", options: .regularExpression)
     s = s.replacingOccurrences(of: "\\\\usepackage\\{.*?\\}",   with: "", options: .regularExpression)
     s = s.replacingOccurrences(of: "\\\\begin\\{document\\}",   with: "", options: .regularExpression)

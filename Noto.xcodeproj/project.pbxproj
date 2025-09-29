@@ -65,6 +65,7 @@
 				Config/Debug.xcconfig,
 				Config/Release.xcconfig,
 				Info.plist,
+				PageSpec.swift,
 			);
 			target = FAA762312E66CAE700BF88FD /* Noto */;
 		};

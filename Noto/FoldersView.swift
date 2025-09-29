@@ -3,11 +3,16 @@ import SwiftUI
 // ROOT BROWSER (first screen)
 struct FoldersView: View {
     @State private var warmed = false
+    @EnvironmentObject var store: NotebookStore
 
     var body: some View {
         NavigationStack {
             BrowserGrid(title: "Browser")
                 .navigationTitle("All Notes")
+        }
+        .onAppear {
+            print("FoldersView: Store has \(store.folders.count) folders")
+            print("FoldersView: Store has \(store.rootNotebooks.count) root notebooks")
         }
     }
 }
@@ -48,6 +53,10 @@ private struct BrowserGrid: View {
         ScrollView {
             let cols = [GridItem(.adaptive(minimum: 200, maximum: 260), spacing: 16, alignment: .top)]
             LazyVGrid(columns: cols, spacing: 16) {
+                // Debug info
+                let childFolders = store.childFolders(of: containerID)
+                let childNotebooks = store.childNotebooks(of: containerID)
+                let _ = print("BrowserGrid: containerID=\(containerID?.uuidString ?? "nil"), folders=\(childFolders.count), notebooks=\(childNotebooks.count)")
 
                 // New… tile (menu) — NO showNameSheet/createKind anymore
                 NewChoiceTile {

@@ -43,8 +43,71 @@ struct MiniTeX {
             with: #"\text{"#,
             options: .regularExpression
         )
-        let (meta, body) = parse(fixed)
+        
+        // Handle \\ line breaks - convert to paragraph breaks
+        let withParagraphs = fixed
+            .replacingOccurrences(of: "\\\\", with: "\n\n")
+            .replacingOccurrences(of: "\\\n", with: "\n\n")
+        
+        // Auto-wrap standalone math expressions (like F=ma, E = \frac{1}{2}mv^2)
+        let withMath = autoWrapMath(withParagraphs)
+        
+        let (meta, body) = parse(withMath)
         return html(doc: .document(meta: meta, blocks: body))
+    }
+    
+    // MARK: - Auto-wrap standalone math expressions
+    private static func autoWrapMath(_ text: String) -> String {
+        let lines = text.components(separatedBy: .newlines)
+        var result: [String] = []
+        
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            
+            // Skip empty lines
+            if trimmed.isEmpty {
+                result.append(line)
+                continue
+            }
+            
+            // Skip lines that are already wrapped in $ or are \text{...}
+            if trimmed.hasPrefix("$") || trimmed.hasPrefix("\\text{") || trimmed.hasPrefix("$$") {
+                result.append(line)
+                continue
+            }
+            
+            // Check if this looks like a math expression
+            // Patterns: F=ma, E = \frac{1}{2}mv^2, etc.
+            if isMathExpression(trimmed) {
+                result.append("$" + trimmed + "$")
+            } else {
+                result.append(line)
+            }
+        }
+        
+        return result.joined(separator: "\n")
+    }
+    
+    private static func isMathExpression(_ text: String) -> Bool {
+        // Check for common math patterns
+        let mathPatterns = [
+            #"[A-Za-z]\s*=\s*[A-Za-z0-9]"#,  // F=ma, E=mc^2
+            #"\\frac\{"#,                     // \frac{...}
+            #"\\int"#,                        // \int
+            #"\\sum"#,                        // \sum
+            #"\\lim"#,                        // \lim
+            #"\\sqrt"#,                       // \sqrt
+            #"[A-Za-z]\s*=\s*\\"#,           // F = \frac{...}
+            #"[A-Za-z]\s*=\s*-\s*[A-Za-z]"#, // F = -kx
+        ]
+        
+        for pattern in mathPatterns {
+            if text.range(of: pattern, options: .regularExpression) != nil {
+                return true
+            }
+        }
+        
+        return false
     }
 
     // MARK: - Very small parser
@@ -250,35 +313,63 @@ struct MiniTeX {
                 i = j < text.endIndex ? text.index(after: j) : j
                 continue
             }
-            // LaTeX \text{...} outside math: emit plain text (non-math)
+            // LaTeX commands: \text{...}, \title{...}, \textbf{...}, \textit{...}
             if c == "\\" {
                 let rest = String(text[i...])
-                if rest.hasPrefix("\\text") {
-                    if !buffer.isEmpty { pushText(buffer); buffer = "" }
-                    // skip "\text"
-                    i = text.index(i, offsetBy: 5, limitedBy: text.endIndex) ?? text.endIndex
-                    // optional spaces then "{"
-                    while i < text.endIndex, text[i].isWhitespace { i = text.index(after: i) }
-                    if i < text.endIndex, text[i] == "{" {
-                        var j = text.index(after: i)
-                        var inner = ""
-                        var depth = 1
-                        while j < text.endIndex, depth > 0 {
-                            let ch = text[j]
-                            if ch == "{" { depth += 1 }
-                            else if ch == "}" { depth -= 1; if depth == 0 { break } }
-                            if depth > 0 { inner.append(ch) }
-                            j = text.index(after: j)
+                let commands = ["\\text", "\\title", "\\textbf", "\\textit"]
+                var commandFound = false
+                
+                for cmd in commands {
+                    if rest.hasPrefix(cmd) {
+                        commandFound = true
+                        if !buffer.isEmpty { pushText(buffer); buffer = "" }
+                        
+                        // Find the opening brace
+                        var searchIndex = text.index(i, offsetBy: cmd.count)
+                        while searchIndex < text.endIndex, text[searchIndex].isWhitespace {
+                            searchIndex = text.index(after: searchIndex)
                         }
-                        out.append(.text(inner))          // render as plain HTML text
-                        i = j < text.endIndex ? text.index(after: j) : j
-                        continue
-                    } else {
-                        // fallback: treat literally
-                        buffer.append("\\text")
-                        continue
+                        
+                        if searchIndex < text.endIndex, text[searchIndex] == "{" {
+                            // Find the matching closing brace
+                            var braceIndex = text.index(after: searchIndex)
+                            var inner = ""
+                            var depth = 1
+                            
+                            while braceIndex < text.endIndex, depth > 0 {
+                                let ch = text[braceIndex]
+                                if ch == "{" { depth += 1 }
+                                else if ch == "}" { depth -= 1; if depth == 0 { break } }
+                                if depth > 0 { inner.append(ch) }
+                                braceIndex = text.index(after: braceIndex)
+                            }
+                            
+                            // Handle different commands
+                            switch cmd {
+                            case "\\text", "\\title":
+                                out.append(.text(inner))
+                            case "\\textbf":
+                                out.append(.bold(parseInlines(inner)))
+                            case "\\textit":
+                                out.append(.italic(parseInlines(inner)))
+                            default:
+                                out.append(.text(inner))
+                            }
+                            
+                            // Move past the closing brace
+                            i = braceIndex < text.endIndex ? text.index(after: braceIndex) : braceIndex
+                        } else {
+                            // No opening brace found, treat as literal
+                            buffer.append(cmd)
+                        }
+                        break
                     }
                 }
+                
+                if !commandFound {
+                    buffer.append(c)
+                }
+                continue
             }
 
             buffer.append(c)
@@ -311,12 +402,22 @@ struct MiniTeX {
             return body
         }
     }
+    
+    private static func getHeadingClass(level: Int) -> String {
+        switch level {
+        case 1: return "section"
+        case 2: return "subsection" 
+        case 3: return "subsubsection"
+        default: return "heading"
+        }
+    }
 
     private static func html(block: MiniBlock) -> String {
         switch block {
         case .heading(let level, let text):
             let lv = max(1, min(level, 6))
-            return "<h\(lv)>\(esc(text))</h\(lv)>"
+            let cssClass = getHeadingClass(level: level)
+            return "<h\(lv) class='\(cssClass)'>\(esc(text))</h\(lv)>"
         case .paragraph(let inlines):
             return "<p>\(html(inlines: inlines))</p>"
         case .ul(let items):
